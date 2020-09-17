@@ -49,14 +49,10 @@
   <!-- Use doc_depend for packages you need only for building documentation: -->
   <!--   <doc_depend>doxygen</doc_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
-  <build_depend>davis_ros_driver</build_depend>
-  <build_depend>dvs_renderer</build_depend>
   <build_depend>rospy</build_depend>
-  <build_export_depend>davis_ros_driver</build_export_depend>
-  <build_export_depend>dvs_renderer</build_export_depend>
   <build_export_depend>rospy</build_export_depend>
-  <exec_depend>davis_ros_driver</exec_depend>
-  <exec_depend>dvs_renderer</exec_depend>
+  <build_export_depend>dvs_rendered</build_export_depend>
+  <build_export_depend>davis_ros_driver</build_export_depend>
   <exec_depend>rospy</exec_depend>
 
 
