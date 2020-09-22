@@ -44,7 +44,7 @@ class DataGenerator:
         self.min_z = -0.012#-0.01
 
         self.N_examples = 9
-        self.N_iterations_per_example = 5
+        self.N_iterations_per_example = 1
 
         self.base_to_default_rot = R.from_quat([0, 1, 0, 0])
 

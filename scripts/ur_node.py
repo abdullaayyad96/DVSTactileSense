@@ -217,5 +217,5 @@ class urx_ros:
         self.robot.close()
         
 if __name__ == '__main__':
-    robot = urx_ros("192.168.1.110")
+    robot = urx_ros("192.168.0.110")
     exit()

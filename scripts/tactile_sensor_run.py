@@ -16,6 +16,7 @@ import random
 import tensorflow.compat.v1 as tf
 import tensorflow as tf2
 import matplotlib.pyplot as plt
+import cv2
 
 #For urx, check documentation: http://www.me.umn.edu/courses/me5286/robotlab/Resources/scriptManual-3.5.4.pdf
 
@@ -78,28 +79,49 @@ class TactileSensor:
             else:
                 self.input_frame[0, 0, event.y, event.x, 0] = self.input_frame[0, 0, event.y, event.x, 0] - 1
 
+    def cropFrames(self, image, circle_center=(173, 130), circle_rad=100, im_height=260, im_width=346, im_channels=1):
+        
+        mask = np.zeros((im_height, im_width, im_channels), dtype=np.float32)            
+        cv2.circle(mask, circle_center, circle_rad, [1]*im_channels, -1, 8, 0)
+        cropped_image = np.multiply(mask, image)
+
+        return cropped_image
+
 
 
         
     def run_node(self):
         prev_state = 0
+        fall_counter = 0
+        initiate_counter = False
         vec = []
         while not rospy.is_shutdown():
             self.rate.sleep()
+            cropped_image = self.cropFrames(self.input_frame, circle_center=(170, 125), circle_rad=115)
 
             last_layer, final_hidden_state, final_carry_state = self.sess.run([self.nn_last_layer, self.hidden_state, self.carry_state], 
-                                feed_dict={self.input_image: self.input_frame, self.initial_hidden_state: self.prev_hidden_state, self.initial_carry_state: self.prev_carry_state})
+                                feed_dict={self.input_image: cropped_image, self.initial_hidden_state: self.prev_hidden_state, self.initial_carry_state: self.prev_carry_state})
 
             
             self.input_frame = np.zeros(shape=(1, 1, 260, 346, 1))
             NN_prediction = np.argmax(last_layer.reshape(-1), 0) 
 
-            if prev_state!=0 and NN_prediction==0:
-                #reset states after counter of non-zero state is exceeded
-                self.prev_hidden_state = np.zeros(shape=(1, 29, 39, 20))
-                self.prev_carry_state = np.zeros(shape=(1, 29, 39, 20))
-            else:
-                self.prev_hidden_state = final_hidden_state
+            if (prev_state > 0) and NN_prediction==0:
+                initiate_counter = True
+
+            if initiate_counter and NN_prediction==0:
+                fall_counter = fall_counter + 1
+            elif NN_prediction!=0:
+                initiate_counter = False
+                fall_counter = 0
+
+            if fall_counter > 5:
+                self.prev_hidden_state = np.zeros(shape=(1, 29, 39, 20), dtype=float)
+                self.prev_carry_state = np.zeros(shape=(1, 29, 39, 20), dtype=float)
+                initiate_counter = False
+                fall_counter = 0
+            else:        
+                self.prev_hidden_state = final_hidden_state    
                 self.prev_carry_state = final_carry_state
 
             prev_state = NN_prediction
