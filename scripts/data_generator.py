@@ -6,7 +6,6 @@ import sys
 import math
 import time
 import rospy
-from dvs_msgs.msg import EventArray
 from geometry_msgs.msg import Pose, Vector3, PoseStamped
 from std_msgs.msg import Float64, Bool
 from std_srvs.srv import Empty
@@ -39,12 +38,12 @@ class DataGenerator:
 
         self.angle_values = [0.15, 0.25]
 
-        self.contact_thresh = -0.007#-0.005
+        self.contact_thresh = -0.012#-0.005
         self.max_z = 0.1
-        self.min_z = -0.012#-0.01
+        self.min_z = -0.0158#-0.01
 
         self.N_examples = 9
-        self.N_iterations_per_example = 1
+        self.N_iterations_per_example = 5
 
         self.base_to_default_rot = R.from_quat([0, 1, 0, 0])
 
