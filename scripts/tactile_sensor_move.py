@@ -29,18 +29,18 @@ class TactileSensor:
 
         self.ros_node = rospy.init_node('tactile_sensor_image', anonymous=True)
 
-        self.cmd_vel_pubs = rospy.Publisher("ur_cmd_vel", Twist, queue_size=2)
-        self.adjusted_pose_pubs = rospy.Publisher("tactile_pose", Pose, queue_size=2)
+        self.cmd_vel_pubs = rospy.Publisher("ur_cmd_vel", Twist, queue_size=0)
+        self.adjusted_pose_pubs = rospy.Publisher("tactile_pose", Pose, queue_size=0)
 
-        self.mode_subs = rospy.Subscriber("/tactile_control_mode", Bool, self.tactile_mode_callback, queue_size=2)
-        self.ur_pose_subs = rospy.Subscriber("/ur10_pose", PoseStamped, self.pose_callback, queue_size=2)
-        self.images_subs = rospy.Subscriber("/dvs/image_raw", Image, self.image_callback, queue_size=1)
+        self.mode_subs = rospy.Subscriber("/tactile_control_mode", Bool, self.tactile_mode_callback, queue_size=1)
+        self.ur_pose_subs = rospy.Subscriber("/ur10_pose", PoseStamped, self.pose_callback, queue_size=1)
+        self.images_subs = rospy.Subscriber("/davis_right/image_raw", Image, self.image_callback, queue_size=1)
         self.rate = rospy.Rate(10)
 
         self.contact_status = Bool()
         self.contact_angle = Vector3()
 
-        self.angle_values = [0.15, 0.25]
+        self.angle_values = [0.1, 0.25]
         self.N_angles = 9
         self.list_of_rotations = []
 
@@ -81,7 +81,7 @@ class TactileSensor:
         #plt.show()
 
     def pose_callback(self, pose_msg):
-        self.last_received_pose = pose_msg        
+        self.last_received_pose = pose_msg.pose       
 
     def tactile_mode_callback(self, bool_msg):
         self.move_robot = bool_msg.data
@@ -103,29 +103,31 @@ class TactileSensor:
         
     def run_prediction(self, input_image):
 
-        cropped_image = self.cropFrames(input_image, circle_center=(170, 125), circle_rad=115, im_channels=3)
-        normalized_image = (cropped_image - np.average(cropped_image)) / np.max(cropped_image)
-
-        # print(np.shape(cropped_image))
-        # plt.imshow(cropped_image)
-        # plt.show()
-
-        last_layer = self.sess.run([self.nn_last_layer], 
-                            feed_dict={self.input_image: [normalized_image]})
-
+        if self.move_robot:  
             
-        NN_prediction = np.argmax(last_layer) 
+            cropped_image = self.cropFrames(input_image, circle_center=(170, 125), circle_rad=115, im_channels=3)
+            normalized_image = (cropped_image - np.average(cropped_image)) / np.max(cropped_image)
 
-        vel_cmd = Twist()
+            # print(np.shape(cropped_image))
+            # plt.imshow(cropped_image)
+            # plt.show()
 
-        if self.move_robot:        
+            last_layer = self.sess.run([self.nn_last_layer], 
+                                feed_dict={self.input_image: [normalized_image]})
+
+                
+            NN_prediction = np.argmax(last_layer) 
+
+            vel_cmd = Twist()
+      
             if NN_prediction == 0:
                 vel_cmd.linear.x = 0
                 vel_cmd.linear.y = 0   
-                vel_cmd.linear.z = 0.01       
+                vel_cmd.linear.z = 0.007     
                 vel_cmd.angular.x = 0
                 vel_cmd.angular.y = 0   
                 vel_cmd.angular.z = 0 
+                self.converge_counter = 0
             elif NN_prediction == 1:    
                 vel_cmd.linear.x = 0
                 vel_cmd.linear.y = 0   
@@ -135,29 +137,28 @@ class TactileSensor:
                 vel_cmd.angular.z = 0   
                 self.converge_counter = self.converge_counter + 1
             else:
-                print(NN_prediction)
-                print(len(self.list_of_rotations))
                 hit_angle = self.list_of_rotations[NN_prediction-2]
                 norm_hit_angle = [float(i)/np.linalg.norm(hit_angle) for i in hit_angle]
-                angle_rate = 0.1
+                angle_rate = 0.02
                 vel_cmd.linear.x = 0
                 vel_cmd.linear.y = 0   
                 vel_cmd.linear.z = 0     
                 vel_cmd.angular.x = - angle_rate * norm_hit_angle[0]
                 vel_cmd.angular.y = - angle_rate * norm_hit_angle[1]
-                vel_cmd.angular.z = 0   
+                vel_cmd.angular.z = 0
+                self.converge_counter = 0
 
             
             self.cmd_vel_pubs.publish(vel_cmd)
 
-            if self.converge_counter > 3:
+            if self.converge_counter > 1:
                 self.move_robot = False
-                self.adjusted_pose_pubs(self.last_received_pose)
+                self.adjusted_pose_pubs.publish(self.last_received_pose)
                 self.converge_counter = 0
 
-        print("angle_prediction")
-        print(NN_prediction)
-        #self.vec_of_precitions.append(NN_prediction)        
+            print("angle_prediction")
+            print(NN_prediction)
+            #self.vec_of_precitions.append(NN_prediction)        
 
 
         

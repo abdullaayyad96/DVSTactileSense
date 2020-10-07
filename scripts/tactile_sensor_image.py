@@ -30,7 +30,7 @@ class TactileSensor:
         self.ros_node = rospy.init_node('tactile_sensor_image', anonymous=True)
         self.contact_stats_pub = rospy.Publisher('contact_status', Bool, queue_size=10)
         self.contact_deg_pub = rospy.Publisher("contact_angle", Vector3, queue_size=2)
-        self.cmd_pose_subs = rospy.Subscriber("/dvs/image_raw", Image, self.image_callback, queue_size=1)
+        self.cmd_pose_subs = rospy.Subscriber("/davis_right/image_raw", Image, self.image_callback, queue_size=1)
         self.rate = rospy.Rate(10)
 
         self.contact_status = Bool()
